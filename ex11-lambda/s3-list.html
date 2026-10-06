@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>S3 Bucket Manager</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --navy: #182536;
+      --navy-2: #24364a;
+      --aws: #ff9900;
+      --aws-dark: #e68a00;
+      --blue: #2563eb;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --green: #15803d;
+      --green-soft: #f0fdf4;
+      --shadow: 0 18px 45px rgba(23, 32, 51, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, Pretendard, "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(255, 153, 0, 0.08), transparent 30%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .topbar {
+      background: linear-gradient(135deg, var(--navy), var(--navy-2));
+      color: white;
+      padding: 28px 24px;
+      box-shadow: 0 8px 30px rgba(24, 37, 54, 0.2);
+    }
+
+    .topbar-inner {
+      width: min(1180px, calc(100% - 24px));
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: var(--aws);
+      color: #1f2937;
+      font-weight: 900;
+      box-shadow: 0 8px 20px rgba(255, 153, 0, 0.28);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 30px);
+      letter-spacing: -0.04em;
+    }
+
+    .brand p {
+      margin: 5px 0 0;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    .region-chip {
+      white-space: nowrap;
+      padding: 9px 13px;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 999px;
+      color: #e5e7eb;
+      background: rgba(255,255,255,.07);
+      font-size: 13px;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 32px auto 50px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      background: var(--panel);
+      border: 1px solid rgba(229, 231, 235, 0.8);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .stat-value.small {
+      font-size: 16px;
+      line-height: 1.5;
+      word-break: break-all;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 350px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(229, 231, 235, 0.9);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+
+    .panel-subtitle {
+      margin: 5px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .create-body {
+      padding: 22px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .input {
+      width: 100%;
+      border: 1px solid #d7dce3;
+      border-radius: 12px;
+      padding: 12px 13px;
+      outline: none;
+      transition: .2s ease;
+      background: #fff;
+    }
+
+    .input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .10);
+    }
+
+    .help {
+      margin: 9px 0 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 11px;
+      padding: 11px 15px;
+      font-weight: 800;
+      transition: .18s ease;
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--aws);
+      color: #1f2937;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--aws-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #eef2f7;
+      color: #334155;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #e2e8f0;
+    }
+
+    .btn-danger {
+      background: var(--red);
+      color: white;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      filter: brightness(.94);
+    }
+
+    .btn-small {
+      padding: 8px 11px;
+      font-size: 12px;
+    }
+
+    .create-button {
+      width: 100%;
+    }
+
+    .toolbar {
+      padding: 16px 18px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .search {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      text-align: left;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 15px 16px;
+      border-bottom: 1px solid #eef0f3;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover {
+      background: #fbfdff;
+    }
+
+    .bucket-name {
+      font-weight: 800;
+      color: #0f4c81;
+      word-break: break-all;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .loading,
+    .empty,
+    .error-box {
+      padding: 48px 22px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .error-box {
+      color: var(--red);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 3px solid #e5e7eb;
+      border-top-color: var(--aws);
+      animation: spin .8s linear infinite;
+      margin-bottom: 10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .footer-note {
+      margin-top: 15px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .toast-wrap {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 2000;
+      display: grid;
+      gap: 10px;
+      width: min(390px, calc(100vw - 36px));
+    }
+
+    .toast {
+      background: white;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--green);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 18px 45px rgba(0,0,0,.14);
+      animation: slideIn .22s ease;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .toast.error {
+      border-left-color: var(--red);
+    }
+
+    .toast-title {
+      font-weight: 900;
+      margin-bottom: 3px;
+    }
+
+    .toast-message {
+      color: #4b5563;
+      word-break: break-word;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .58);
+      backdrop-filter: blur(4px);
+      display: none;
+      place-items: center;
+      padding: 18px;
+      z-index: 1500;
+    }
+
+    .modal-backdrop.show {
+      display: grid;
+    }
+
+    .modal {
+      width: min(500px, 100%);
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.25);
+      overflow: hidden;
+    }
+
+    .modal-head {
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-head h3 {
+      margin: 0 0 7px;
+      color: var(--red);
+    }
+
+    .modal-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .modal-body {
+      padding: 20px 22px;
+    }
+
+    .danger-name {
+      background: var(--red-soft);
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      padding: 11px 12px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      word-break: break-all;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+      padding: 16px 22px 22px;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .stats .stat:last-child {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .topbar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .stats .stat:last-child {
+        grid-column: auto;
+      }
+
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .toolbar .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon">S3</div>
+        <div>
+          <h1>S3 Bucket Manager</h1>
+          <p>Lambda Function URL 기반 버킷 조회 · 생성 · 삭제</p>
+        </div>
+      </div>
+      <div class="region-chip">Region: eu-north-1</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="stats">
+      <div class="stat">
+        <div class="stat-label">전체 버킷</div>
+        <div class="stat-value" id="totalCount">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">현재 표시 중</div>
+        <div class="stat-value" id="visibleCount">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">마지막 새로고침</div>
+        <div class="stat-value small" id="lastRefresh">아직 조회하지 않음</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <aside class="panel">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">새 버킷 생성</h2>
+            <p class="panel-subtitle">이름을 직접 입력하거나 비워두면 랜덤 이름 생성</p>
+          </div>
+        </div>
+
+        <div class="create-body">
+          <label for="bucketName">Bucket Name</label>
+          <input
+            id="bucketName"
+            class="input"
+            type="text"
+            placeholder="예: std20-lambda-create-bucket-0001"
+            autocomplete="off"
+          />
+          <p class="help">
+            소문자 영문, 숫자, 마침표(.), 하이픈(-)을 사용할 수 있습니다.
+            빈 값으로 생성하면 Lambda가 랜덤 이름을 만듭니다.
+          </p>
+
+          <button class="btn btn-primary create-button" id="createBtn" onclick="createBucket()">
+            버킷 생성
+          </button>
+
+          <p class="footer-note">
+            생성 후 목록을 자동으로 새로고침합니다.
+          </p>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">S3 Bucket 목록</h2>
+            <p class="panel-subtitle">계정의 버킷 목록을 조회하고 필요한 버킷을 삭제할 수 있습니다.</p>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <input
+            id="searchInput"
+            class="input search"
+            type="search"
+            placeholder="버킷 이름 또는 리전 검색"
+            oninput="renderBuckets()"
+          />
+          <button class="btn btn-secondary" onclick="loadBuckets()">새로고침</button>
+        </div>
+
+        <div id="contentArea">
+          <div class="loading">
+            <div class="spinner"></div>
+            <div>버킷 목록을 불러오는 중입니다...</div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="deleteModal" onclick="closeDeleteModalByBackdrop(event)">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>버킷 삭제</h3>
+        <p>버킷 안의 객체와 버전까지 삭제될 수 있습니다. 삭제할 버킷 이름을 정확히 입력해야 버튼이 활성화됩니다.</p>
+      </div>
+
+      <div class="modal-body">
+        <div class="danger-name" id="deleteTargetName"></div>
+
+        <label for="deleteConfirmInput">버킷 이름 확인</label>
+        <input
+          id="deleteConfirmInput"
+          class="input"
+          type="text"
+          placeholder="위 버킷 이름을 입력하세요"
+          autocomplete="off"
+          oninput="validateDeleteConfirmation()"
+        />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">취소</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn" onclick="deleteBucket()" disabled>
+          삭제 실행
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LIST_URL =
+      "https://kqle2d7rwcparnr4yd2ataqj2y0fpndb.lambda-url.eu-north-1.on.aws/";
+
+    const CREATE_URL =
+      "https://4udnmdvuby6bc6trfr3ym3mpri0zjzsg.lambda-url.eu-north-1.on.aws/";
+
+    const DELETE_URL =
+      "https://gbd3q46owl5qbtvnjvnmxynnay0zhqhw.lambda-url.eu-north-1.on.aws/";
+
+    let buckets = [];
+    let deleteTarget = "";
+
+    async function unwrapLambdaResponse(response) {
+      let data;
+
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(`응답을 JSON으로 읽지 못했습니다. HTTP ${response.status}`);
+      }
+
+      if (data && Object.prototype.hasOwnProperty.call(data, "body")) {
+        if (typeof data.body === "string") {
+          try {
+            data = JSON.parse(data.body);
+          } catch {
+            // 이미 일반 문자열이라면 그대로 둠
+          }
+        } else if (typeof data.body === "object" && data.body !== null) {
+          data = data.body;
+        }
+      }
+
+      return data;
+    }
+
+    function parseBucket(bucketString) {
+      const regex = /Bucket:\s*(.*?)\s+Region:\s*(.*?)\s+Creation Date:\s*(.*)/;
+      const match = bucketString.match(regex);
+
+      if (!match) {
+        return {
+          name: bucketString,
+          region: "Unknown",
+          creationDate: ""
+        };
+      }
+
+      let region = match[2];
+
+      if (!region || region === "None" || region === "null") {
+        region = "us-east-1";
+      }
+
+      return {
+        name: match[1],
+        region,
+        creationDate: match[3]
+      };
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return "-";
+
+      const date = new Date(dateString);
+
+      if (Number.isNaN(date.getTime())) {
+        return dateString;
+      }
+
+      return date.toLocaleString("ko-KR", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    }
+
+    async function loadBuckets() {
+      const contentArea = document.getElementById("contentArea");
+
+      contentArea.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <div>버킷 목록을 불러오는 중입니다...</div>
+        </div>
+      `;
+
+      try {
+        const response = await fetch(LIST_URL, {
+          method: "GET"
+        });
+
+        const data = await unwrapLambdaResponse(response);
+
+        if (!response.ok) {
+          const reason =
+            data?.message ||
+            data?.error ||
+            `HTTP ${response.status}`;
+          throw new Error(reason);
+        }
+
+        buckets = (data.buckets || []).map(parseBucket);
+
+        document.getElementById("totalCount").textContent = data.count ?? buckets.length;
+        document.getElementById("lastRefresh").textContent =
+          new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+
+        renderBuckets();
+      } catch (error) {
+        console.error(error);
+
+        document.getElementById("totalCount").textContent = "-";
+        document.getElementById("visibleCount").textContent = "-";
+
+        contentArea.innerHTML = `
+          <div class="error-box">
+            버킷 목록 조회 실패<br>
+            <small>${escapeHtml(error.message)}</small>
+          </div>
+        `;
+
+        showToast("조회 실패", error.message, true);
+      }
+    }
+
+    function renderBuckets() {
+      const contentArea = document.getElementById("contentArea");
+      const keyword = document.getElementById("searchInput").value.trim().toLowerCase();
+
+      const filtered = buckets.filter(bucket => {
+        return (
+          bucket.name.toLowerCase().includes(keyword) ||
+          bucket.region.toLowerCase().includes(keyword)
+        );
+      });
+
+      document.getElementById("visibleCount").textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        contentArea.innerHTML = `
+          <div class="empty">
+            ${buckets.length === 0
+              ? "조회된 S3 버킷이 없습니다."
+              : "검색 조건에 맞는 버킷이 없습니다."}
+          </div>
+        `;
+        return;
+      }
+
+      const table = document.createElement("div");
+      table.className = "table-wrap";
+
+      const tableElement = document.createElement("table");
+
+      tableElement.innerHTML = `
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>Bucket Name</th>
+            <th>Region</th>
+            <th>Creation Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      `;
+
+      const tbody = tableElement.querySelector("tbody");
+
+      filtered.forEach((bucket, index) => {
+        const tr = document.createElement("tr");
+
+        const no = document.createElement("td");
+        no.textContent = index + 1;
+
+        const name = document.createElement("td");
+        name.className = "bucket-name";
+        name.textContent = bucket.name;
+
+        const region = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = bucket.region;
+        region.appendChild(badge);
+
+        const date = document.createElement("td");
+        date.textContent = formatDate(bucket.creationDate);
+
+        const action = document.createElement("td");
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "btn btn-danger btn-small";
+        deleteBtn.textContent = "삭제";
+        deleteBtn.onclick = () => openDeleteModal(bucket.name);
+        action.appendChild(deleteBtn);
+
+        tr.append(no, name, region, date, action);
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tableElement);
+      contentArea.replaceChildren(table);
+    }
+
+    async function createBucket() {
+      const input = document.getElementById("bucketName");
+      const button = document.getElementById("createBtn");
+      const bucketName = input.value.trim();
+
+      button.disabled = true;
+      button.textContent = "생성 중...";
+
+      try {
+        const response = await fetch(CREATE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            bucket_name: bucketName || null
+          })
+        });
+
+        const data = await unwrapLambdaResponse(response);
+
+        if (!response.ok || data?.created === false) {
+          throw new Error(
+            data?.reason ||
+            data?.error_message ||
+            `HTTP ${response.status}`
+          );
+        }
+
+        showToast(
+          "버킷 생성 성공",
+          `${data.bucket_name || bucketName} 버킷을 생성했습니다.`
+        );
+
+        input.value = "";
+        await loadBuckets();
+      } catch (error) {
+        console.error(error);
+        showToast("버킷 생성 실패", error.message, true);
+      } finally {
+        button.disabled = false;
+        button.textContent = "버킷 생성";
+      }
+    }
+
+    function openDeleteModal(bucketName) {
+      deleteTarget = bucketName;
+
+      document.getElementById("deleteTargetName").textContent = bucketName;
+      document.getElementById("deleteConfirmInput").value = "";
+      document.getElementById("confirmDeleteBtn").disabled = true;
+      document.getElementById("deleteModal").classList.add("show");
+
+      setTimeout(() => {
+        document.getElementById("deleteConfirmInput").focus();
+      }, 0);
+    }
+
+    function closeDeleteModal() {
+      document.getElementById("deleteModal").classList.remove("show");
+      deleteTarget = "";
+    }
+
+    function closeDeleteModalByBackdrop(event) {
+      if (event.target.id === "deleteModal") {
+        closeDeleteModal();
+      }
+    }
+
+    function validateDeleteConfirmation() {
+      const typed = document.getElementById("deleteConfirmInput").value;
+      document.getElementById("confirmDeleteBtn").disabled =
+        typed !== deleteTarget;
+    }
+
+    async function deleteBucket() {
+      if (!deleteTarget) return;
+
+      const button = document.getElementById("confirmDeleteBtn");
+      const deletingName = deleteTarget;
+
+      button.disabled = true;
+      button.textContent = "삭제 중...";
+
+      try {
+        const url =
+          `${DELETE_URL}?bucket_name=${encodeURIComponent(deletingName)}`;
+
+        const response = await fetch(url, {
+          method: "DELETE"
+        });
+
+        const data = await unwrapLambdaResponse(response);
+
+        if (!response.ok || data?.deleted === false) {
+          throw new Error(
+            data?.reason ||
+            data?.error_message ||
+            data?.error ||
+            `HTTP ${response.status}`
+          );
+        }
+
+        closeDeleteModal();
+
+        showToast(
+          "버킷 삭제 성공",
+          `${deletingName} 버킷을 삭제했습니다.`
+        );
+
+        await loadBuckets();
+      } catch (error) {
+        console.error(error);
+        showToast("버킷 삭제 실패", error.message, true);
+        button.disabled = false;
+        button.textContent = "삭제 실행";
+      }
+    }
+
+    function showToast(title, message, isError = false) {
+      const wrap = document.getElementById("toastWrap");
+      const toast = document.createElement("div");
+
+      toast.className = `toast${isError ? " error" : ""}`;
+
+      const titleEl = document.createElement("div");
+      titleEl.className = "toast-title";
+      titleEl.textContent = title;
+
+      const messageEl = document.createElement("div");
+      messageEl.className = "toast-message";
+      messageEl.textContent = message;
+
+      toast.append(titleEl, messageEl);
+      wrap.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 4500);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    loadBuckets();
+  </script>
+</body>
+</html>
