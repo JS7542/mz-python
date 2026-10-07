@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Lambda S3 File Manager</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 20px;
+            background: #f4f6f8;
+            font-family: Arial, "Noto Sans KR", sans-serif;
+            color: #222;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        .description {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #bbb;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #555;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .lambda-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.5fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .bucket-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .bucket-row select {
+            flex: 1;
+        }
+
+        button {
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        .bucket-button {
+            background: #555;
+            color: white;
+            white-space: nowrap;
+        }
+
+        .secondary-button {
+            background: #eee;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+
+        .read-button {
+            background: #1976d2;
+            color: white;
+        }
+
+        .delete-button {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .copy-button {
+            background: #388e3c;
+            color: white;
+        }
+
+        .upload-button {
+            background: #7b1fa2;
+            color: white;
+            height: 41px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .explorer-toolbar {
+            display: flex;
+            gap: 8px;
+            margin: 15px 0 10px;
+        }
+
+        .explorer-toolbar button {
+            padding: 8px 14px;
+            font-size: 13px;
+        }
+
+        .path-bar {
+            padding: 11px 12px;
+            margin-bottom: 10px;
+            background: #f7f7f7;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .explorer-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #777;
+            font-size: 13px;
+        }
+
+        .explorer {
+            height: 410px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 7px;
+        }
+
+        .explorer-empty {
+            padding: 35px 20px;
+            text-align: center;
+            color: #888;
+        }
+
+        .explorer-item {
+            display: grid;
+            grid-template-columns: 32px 1fr auto;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 13px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .explorer-item:last-child {
+            border-bottom: none;
+        }
+
+        .explorer-item:hover {
+            background: #f5f7fa;
+        }
+
+        .explorer-item.selected {
+            background: #eaf3ff;
+        }
+
+        .explorer-icon {
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .explorer-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+
+        .explorer-meta {
+            color: #888;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .current-key {
+            margin-top: 10px;
+            padding: 12px;
+            background: #f7f7f7;
+            border-radius: 5px;
+            font-family: Consolas, monospace;
+            word-break: break-all;
+        }
+
+        .small {
+            margin-top: 5px;
+            color: #777;
+            font-size: 13px;
+        }
+
+        .copy-area,
+        .upload-area {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+
+        .copy-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            gap: 15px;
+        }
+
+        .upload-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .upload-row .form-group {
+            margin-bottom: 0;
+        }
+
+        .result-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #status {
+            font-size: 14px;
+            color: #666;
+        }
+
+        #result {
+            height: 330px;
+            margin-bottom: 0;
+            padding: 20px;
+            overflow: auto;
+            background: #1e1e1e;
+            color: #eee;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: Consolas, monospace;
+            font-size: 14px;
+        }
+
+        @media (max-width: 950px) {
+
+            .lambda-grid,
+            .workspace,
+            .copy-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .explorer {
+                height: 330px;
+            }
+        }
+
+        @media (max-width: 700px) {
+
+            .row,
+            .upload-row {
+                grid-template-columns: 1fr;
+            }
+
+            .bucket-row {
+                flex-direction: column;
+            }
+
+            .bucket-row button,
+            .upload-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>AWS Lambda S3 File Manager</h1>
+
+        <div class="description">
+            Lambda Function URL을 이용하여 S3 버킷과 객체를 탐색하고 조회, 삭제, 복사, 업로드합니다.
+        </div>
+
+        <!-- Lambda URL -->
+        <div class="card">
+            <h2>Lambda Function URL</h2>
+
+            <div class="lambda-grid">
+
+                <div class="form-group">
+                    <label for="readUrl">Read Lambda URL</label>
+                    <input type="text" id="readUrl"
+                        value="https://wpceqlptqhhdlsku3x66xkm4fm0znfed.lambda-url.eu-north-1.on.aws/">
+                </div>
+
+                <div class="form-group">
+                    <label for="deleteUrl">Delete Lambda URL</label>
+                    <input type="text" id="deleteUrl"
+                        value="https://dgzvyhzy6qlw7lo4gr2jfxunxa0farxq.lambda-url.eu-north-1.on.aws/">
+                </div>
+
+                <div class="form-group">
+                    <label for="copyUrl">Copy Lambda URL</label>
+                    <input type="text" id="copyUrl"
+                        value="https://uvzrev6o5bngyjol5ttytywsxy0nmijq.lambda-url.eu-north-1.on.aws/">
+                </div>
+
+                <div class="form-group">
+                    <label for="uploadUrl">Upload Lambda URL</label>
+                    <input type="text" id="uploadUrl"
+                        value="https://cztifbbxhi6ofh2wpzo3m4mg3a0szbiz.lambda-url.eu-north-1.on.aws/">
+                </div>
+
+            </div>
+        </div>
+
+        <div class="workspace">
+
+            <!-- 왼쪽 S3 탐색기 -->
+            <div class="card">
+                <h2>S3 탐색기</h2>
+
+                <div class="form-group">
+                    <label for="bucket">버킷</label>
+
+                    <div class="bucket-row">
+                        <select id="bucket">
+                            <option value="">버킷 조회 버튼을 눌러주세요.</option>
+                        </select>
+
+                        <button type="button" class="bucket-button" onclick="loadBuckets()">
+                            버킷 조회
+                        </button>
+                    </div>
+                </div>
+
+                <div class="explorer-toolbar">
+                    <button type="button" class="secondary-button" onclick="goRoot()">
+                        Root
+                    </button>
+
+                    <button type="button" class="secondary-button" onclick="goUp()">
+                        상위
+                    </button>
+
+                    <button type="button" class="secondary-button" onclick="refreshObjects()">
+                        새로고침
+                    </button>
+                </div>
+
+                <div class="path-bar" id="currentPath">-</div>
+
+                <div class="explorer-info">
+                    <span id="objectCount">폴더 0 / 파일 0</span>
+                    <span>폴더 클릭 시 이동</span>
+                </div>
+
+                <div class="explorer" id="explorer">
+                    <div class="explorer-empty">
+                        버킷 조회 후 버킷을 선택해주세요.
+                    </div>
+                </div>
+            </div>
+
+            <!-- 오른쪽 영역 -->
+            <div>
+
+                <!-- 객체 작업 -->
+                <div class="card">
+                    <h2>객체 작업</h2>
+
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="directory">디렉터리</label>
+                            <input type="text" id="directory" value="Root" placeholder="Root 또는 07.15">
+                            <div class="small">
+                                탐색기에서 폴더를 이동하면 자동 변경됩니다.
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fileName">파일명</label>
+                            <input type="text" id="fileName" placeholder="예: lambda_function.py">
+                            <div class="small">
+                                탐색기에서 파일을 클릭하면 자동 입력됩니다.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="current-key">
+                        선택 객체 :
+                        <span id="currentObject">-</span>
+                    </div>
+
+                    <!-- 복사 -->
+                    <div class="copy-area">
+                        <h2>복사 목적지</h2>
+
+                        <div class="copy-grid">
+                            <div class="form-group">
+                                <label for="destinationBucket">목적지 버킷</label>
+
+                                <select id="destinationBucket">
+                                    <option value="same">원본 버킷과 동일</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="destinationDirectory">
+                                    목적지 디렉터리
+                                </label>
+
+                                <input type="text" id="destinationDirectory" value="Root" placeholder="Root 또는 07.30">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="destinationFile">
+                                    목적지 파일명
+                                </label>
+
+                                <input type="text" id="destinationFile" placeholder="비우면 원본 파일명">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="buttons">
+                        <button class="read-button" onclick="readFile()">
+                            읽기
+                        </button>
+
+                        <button class="delete-button" onclick="deleteFile()">
+                            삭제
+                        </button>
+
+                        <button class="copy-button" onclick="copyFile()">
+                            복사
+                        </button>
+                    </div>
+
+                    <!-- 업로드 -->
+                    <div class="upload-area">
+                        <h2>파일 업로드</h2>
+
+                        <div class="upload-row">
+                            <div class="form-group">
+                                <label for="uploadFile">업로드 파일</label>
+
+                                <input type="file" id="uploadFile">
+                            </div>
+
+                            <button type="button" class="upload-button" onclick="uploadFile()">
+                                업로드
+                            </button>
+                        </div>
+
+                        <div class="small">
+                            현재 선택한 버킷과 디렉터리에 업로드됩니다.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 실행 결과 -->
+                <div class="card">
+                    <div class="result-title">
+                        <h2>실행 결과</h2>
+                        <span id="status">대기 중</span>
+                    </div>
+
+                    <pre id="result">S3 탐색기에서 버킷과 객체를 선택해주세요.</pre>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPrefix = "";
+
+        // ============================================================
+        // 공통 함수
+        // ============================================================
+        function createUrl(baseUrl, params) {
+            const url = new URL(baseUrl);
+
+            Object.keys(params).forEach(key => {
+                if (params[key] !== undefined && params[key] !== null) {
+                    url.searchParams.set(key, params[key]);
+                }
+            });
+
+            return url.toString();
+        }
+
+        function setResult(status, content) {
+            document.getElementById("status").textContent = status;
+            document.getElementById("result").textContent = content;
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) {
+                return "0 B";
+            }
+
+            const units = ["B", "KB", "MB", "GB", "TB"];
+            const index = Math.floor(Math.log(bytes) / Math.log(1024));
+            const size = bytes / Math.pow(1024, index);
+
+            return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function getDirectoryValue() {
+            if (!currentPrefix) {
+                return "Root";
+            }
+
+            return currentPrefix.replace(/\/$/, "");
+        }
+
+        // ============================================================
+        // 버킷 조회
+        // ============================================================
+        async function loadBuckets() {
+            const readUrl = document.getElementById("readUrl").value.trim();
+
+            if (!readUrl) {
+                alert("Read Lambda URL을 입력해주세요.");
+                return;
+            }
+
+            const requestUrl = createUrl(readUrl, {
+                action: "list-buckets"
+            });
+
+            setResult("버킷 조회 중...", `GET ${requestUrl}`);
+
+            try {
+                const response = await fetch(requestUrl, {
+                    method: "GET"
+                });
+
+                const text = await response.text();
+
+                if (!response.ok) {
+                    throw new Error(text);
+                }
+
+                const data = JSON.parse(text);
+
+                const bucketSelect =
+                    document.getElementById("bucket");
+
+                const destinationBucketSelect =
+                    document.getElementById("destinationBucket");
+
+                bucketSelect.innerHTML = "";
+
+                destinationBucketSelect.innerHTML =
+                    '<option value="same">원본 버킷과 동일</option>';
+
+                if (!data.buckets || data.buckets.length === 0) {
+                    bucketSelect.innerHTML =
+                        '<option value="">조회 가능한 버킷이 없습니다.</option>';
+
+                    setResult(
+                        "버킷 조회 완료",
+                        "조회 가능한 버킷이 없습니다."
+                    );
+
+                    return;
+                }
+
+                data.buckets.forEach(bucketName => {
+                    const option = document.createElement("option");
+                    option.value = bucketName;
+                    option.textContent = bucketName;
+                    bucketSelect.appendChild(option);
+
+                    const destinationOption =
+                        document.createElement("option");
+
+                    destinationOption.value = bucketName;
+                    destinationOption.textContent = bucketName;
+
+                    destinationBucketSelect.appendChild(
+                        destinationOption
+                    );
+                });
+
+                setResult(
+                    "버킷 조회 성공",
+                    `조회된 버킷 수 : ${data.buckets.length}`
+                );
+
+                currentPrefix = "";
+                await loadObjects("");
+
+            } catch (error) {
+                setResult(
+                    "버킷 조회 실패",
+                    error.message
+                );
+            }
+        }
+
+        // ============================================================
+        // 버킷 내부 객체 조회
+        // ============================================================
+        async function loadObjects(prefix = "") {
+            const bucket =
+                document.getElementById("bucket").value;
+
+            if (!bucket) {
+                return;
+            }
+
+            currentPrefix = prefix || "";
+
+            const readUrl =
+                document.getElementById("readUrl").value.trim();
+
+            const dir = currentPrefix
+                ? currentPrefix.replace(/\/$/, "")
+                : "Root";
+
+            const requestUrl = createUrl(readUrl, {
+                action: "list-objects",
+                bucket: bucket,
+                dir: dir
+            });
+
+            const explorer =
+                document.getElementById("explorer");
+
+            explorer.innerHTML = `
+            <div class="explorer-empty">
+                객체 목록을 조회하고 있습니다.
+            </div>
+        `;
+
+            try {
+                const response = await fetch(requestUrl, {
+                    method: "GET"
+                });
+
+                const text = await response.text();
+
+                if (!response.ok) {
+                    throw new Error(text);
+                }
+
+                const data = JSON.parse(text);
+
+                currentPrefix = data.prefix || "";
+
+                document.getElementById("directory").value =
+                    getDirectoryValue();
+
+                document.getElementById("fileName").value = "";
+
+                updateCurrentObject();
+                updatePath();
+                renderExplorer(data);
+
+            } catch (error) {
+                explorer.innerHTML = `
+                <div class="explorer-empty">
+                    객체 목록 조회에 실패했습니다.
+                </div>
+            `;
+
+                setResult(
+                    "객체 조회 실패",
+                    error.message
+                );
+            }
+        }
+
+        // ============================================================
+        // 탐색기 출력
+        // ============================================================
+        function renderExplorer(data) {
+            const explorer =
+                document.getElementById("explorer");
+
+            explorer.innerHTML = "";
+
+            document.getElementById("objectCount").textContent =
+                `폴더 ${data.folderCount} / 파일 ${data.fileCount}`;
+
+            if (data.folderCount === 0 && data.fileCount === 0) {
+                explorer.innerHTML = `
+                <div class="explorer-empty">
+                    이 위치에는 객체가 없습니다.
+                </div>
+            `;
+
+                return;
+            }
+
+            data.folders.forEach(folder => {
+                const item = document.createElement("div");
+
+                item.className = "explorer-item";
+
+                item.innerHTML = `
+                <div class="explorer-icon">📁</div>
+
+                <div class="explorer-name">
+                    ${escapeHtml(folder.name)}
+                </div>
+
+                <div class="explorer-meta">
+                    Folder
+                </div>
+            `;
+
+                item.addEventListener("click", () => {
+                    loadObjects(folder.prefix);
+                });
+
+                explorer.appendChild(item);
+            });
+
+            data.files.forEach(file => {
+                const item = document.createElement("div");
+
+                item.className = "explorer-item";
+
+                item.innerHTML = `
+                <div class="explorer-icon">📄</div>
+
+                <div class="explorer-name">
+                    ${escapeHtml(file.name)}
+                </div>
+
+                <div class="explorer-meta">
+                    ${formatSize(file.size)}
+                </div>
+            `;
+
+                item.addEventListener("click", () => {
+                    selectExplorerFile(file, item);
+                });
+
+                item.addEventListener("dblclick", () => {
+                    selectExplorerFile(file, item);
+                    readFile();
+                });
+
+                explorer.appendChild(item);
+            });
+        }
+
+        // ============================================================
+        // 파일 선택
+        // ============================================================
+        function selectExplorerFile(file, item) {
+            document
+                .querySelectorAll(".explorer-item")
+                .forEach(element => {
+                    element.classList.remove("selected");
+                });
+
+            item.classList.add("selected");
+
+            document.getElementById("directory").value =
+                getDirectoryValue();
+
+            document.getElementById("fileName").value =
+                file.name;
+
+            updateCurrentObject();
+        }
+
+        // ============================================================
+        // 현재 경로
+        // ============================================================
+        function updatePath() {
+            const bucket =
+                document.getElementById("bucket").value;
+
+            const path = currentPrefix
+                ? currentPrefix.replace(/\/$/, "")
+                : "Root";
+
+            document.getElementById("currentPath").textContent =
+                `${bucket} / ${path}`;
+        }
+
+        function goRoot() {
+            if (!document.getElementById("bucket").value) {
+                return;
+            }
+
+            loadObjects("");
+        }
+
+        function goUp() {
+            if (!currentPrefix) {
+                return;
+            }
+
+            const parts = currentPrefix
+                .replace(/\/$/, "")
+                .split("/");
+
+            parts.pop();
+
+            const parentPrefix =
+                parts.length > 0
+                    ? `${parts.join("/")}/`
+                    : "";
+
+            loadObjects(parentPrefix);
+        }
+
+        function refreshObjects() {
+            if (!document.getElementById("bucket").value) {
+                return;
+            }
+
+            loadObjects(currentPrefix);
+        }
+
+        // ============================================================
+        // 선택된 객체 표시
+        // ============================================================
+        function updateCurrentObject() {
+            const bucket =
+                document.getElementById("bucket").value;
+
+            const dir =
+                document.getElementById("directory").value.trim();
+
+            const file =
+                document.getElementById("fileName").value.trim();
+
+            let key = file;
+
+            if (
+                dir &&
+                dir !== "/" &&
+                dir.toLowerCase() !== "root"
+            ) {
+                key = `${dir.replace(/^\/+|\/+$/g, "")}/${file}`;
+            }
+
+            document.getElementById("currentObject").textContent =
+                `${bucket || "-"} / ${key || "-"}`;
+        }
+
+        function getSourceInfo() {
+            const bucket =
+                document.getElementById("bucket").value;
+
+            const dir =
+                document.getElementById("directory").value.trim();
+
+            const file =
+                document.getElementById("fileName").value.trim();
+
+            if (!bucket) {
+                alert("버킷을 선택해주세요.");
+                return null;
+            }
+
+            if (!file) {
+                alert("파일을 선택하거나 파일명을 입력해주세요.");
+                return null;
+            }
+
+            return {
+                bucket: bucket,
+                dir: dir || "Root",
+                file: file
+            };
+        }
+
+        // ============================================================
+        // READ
+        // ============================================================
+        async function readFile() {
+            const source = getSourceInfo();
+
+            if (!source) {
+                return;
+            }
+
+            const readUrl =
+                document.getElementById("readUrl").value.trim();
+
+            const requestUrl = createUrl(readUrl, {
+                action: "read",
+                bucket: source.bucket,
+                dir: source.dir,
+                file: source.file
+            });
+
+            setResult(
+                "조회 중...",
+                `GET ${requestUrl}`
+            );
+
+            try {
+                const response = await fetch(requestUrl, {
+                    method: "GET"
+                });
+
+                const text = await response.text();
+
+                if (!response.ok) {
+                    throw new Error(text);
+                }
+
+                setResult(
+                    "조회 성공",
+                    text
+                );
+
+            } catch (error) {
+                setResult(
+                    "조회 실패",
+                    error.message
+                );
+            }
+        }
+
+        // ============================================================
+        // DELETE
+        // ============================================================
+        async function deleteFile() {
+            const source = getSourceInfo();
+
+            if (!source) {
+                return;
+            }
+
+            let key = source.file;
+
+            if (
+                source.dir !== "/" &&
+                source.dir.toLowerCase() !== "root"
+            ) {
+                key =
+                    `${source.dir.replace(/^\/+|\/+$/g, "")}/${source.file}`;
+            }
+
+            const deleteConfirm = confirm(
+                `정말 삭제하시겠습니까?\n\n` +
+                `Bucket : ${source.bucket}\n` +
+                `Key : ${key}`
+            );
+
+            if (!deleteConfirm) {
+                return;
+            }
+
+            const deleteUrl =
+                document.getElementById("deleteUrl").value.trim();
+
+            const requestUrl = createUrl(deleteUrl, {
+                bucket: source.bucket,
+                dir: source.dir,
+                file: source.file
+            });
+
+            setResult(
+                "삭제 중...",
+                `GET ${requestUrl}`
+            );
+
+            try {
+                const response = await fetch(requestUrl, {
+                    method: "GET"
+                });
+
+                const text = await response.text();
+
+                if (!response.ok) {
+                    throw new Error(text);
+                }
+
+                setResult(
+                    "삭제 성공",
+                    text
+                );
+
+                document.getElementById("fileName").value = "";
+
+                updateCurrentObject();
+
+                await loadObjects(currentPrefix);
+
+            } catch (error) {
+                setResult(
+                    "삭제 실패",
+                    error.message
+                );
+            }
+        }
+
+        // ============================================================
+        // COPY
+        // ============================================================
+        async function copyFile() {
+            const source = getSourceInfo();
+
+            if (!source) {
+                return;
+            }
+
+            let destinationBucket =
+                document.getElementById("destinationBucket").value;
+
+            if (destinationBucket === "same") {
+                destinationBucket = source.bucket;
+            }
+
+            const destinationDirectory =
+                document
+                    .getElementById("destinationDirectory")
+                    .value
+                    .trim() || "Root";
+
+            let destinationFile =
+                document
+                    .getElementById("destinationFile")
+                    .value
+                    .trim();
+
+            if (!destinationFile) {
+                destinationFile = source.file;
+            }
+
+            const copyUrl =
+                document.getElementById("copyUrl").value.trim();
+
+            const requestUrl = createUrl(copyUrl, {
+                bucket: source.bucket,
+                dir: source.dir,
+                file: source.file,
+                dest_bucket: destinationBucket,
+                dest_dir: destinationDirectory,
+                dest_file: destinationFile
+            });
+
+            setResult(
+                "복사 중...",
+                `GET ${requestUrl}`
+            );
+
+            try {
+                const response = await fetch(requestUrl, {
+                    method: "GET"
+                });
+
+                const text = await response.text();
+
+                if (!response.ok) {
+                    throw new Error(text);
+                }
+
+                setResult(
+                    "복사 성공",
+                    text
+                );
+
+                await loadObjects(currentPrefix);
+
+            } catch (error) {
+                setResult(
+                    "복사 실패",
+                    error.message
+                );
+            }
+        }
+
+        // ============================================================
+        // UPLOAD
+        // ============================================================
+        async function uploadFile() {
+            const bucket =
+                document.getElementById("bucket").value;
+
+            const directory =
+                document
+                    .getElementById("directory")
+                    .value
+                    .trim() || "Root";
+
+            const fileInput =
+                document.getElementById("uploadFile");
+
+            const file =
+                fileInput.files[0];
+
+            if (!bucket) {
+                alert("버킷을 선택해주세요.");
+                return;
+            }
+
+            if (!file) {
+                alert("업로드할 파일을 선택해주세요.");
+                return;
+            }
+
+            const uploadUrl =
+                document
+                    .getElementById("uploadUrl")
+                    .value
+                    .trim();
+
+            if (!uploadUrl) {
+                alert("Upload Lambda URL을 입력해주세요.");
+                return;
+            }
+
+            setResult(
+                "업로드 준비 중...",
+                `${bucket} / ${directory} / ${file.name}`
+            );
+
+            try {
+                // 1. Presigned URL 요청
+                const presignedResponse =
+                    await fetch(uploadUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            bucket: bucket,
+                            dir_path: directory,
+                            file_name: file.name,
+                            file_type:
+                                file.type || "application/octet-stream"
+                        })
+                    });
+
+                const responseText =
+                    await presignedResponse.text();
+
+                if (!presignedResponse.ok) {
+                    throw new Error(responseText);
+                }
+
+                const data =
+                    JSON.parse(responseText);
+
+                // 2. S3 직접 업로드
+                setResult(
+                    "업로드 중...",
+                    `파일명 : ${file.name}\n` +
+                    `크기 : ${formatSize(file.size)}`
+                );
+
+                const uploadResponse =
+                    await fetch(
+                        data.presigned_url,
+                        {
+                            method: "PUT",
+                            headers: {
+                                "Content-Type":
+                                    file.type ||
+                                    "application/octet-stream"
+                            },
+                            body: file
+                        }
+                    );
+
+                if (!uploadResponse.ok) {
+                    throw new Error(
+                        `S3 업로드 실패 : HTTP ${uploadResponse.status}`
+                    );
+                }
+
+                setResult(
+                    "업로드 성공",
+                    `업로드 완료\n\n` +
+                    `Bucket : ${bucket}\n` +
+                    `Key : ${data.key}\n` +
+                    `Size : ${formatSize(file.size)}`
+                );
+
+                fileInput.value = "";
+
+                await loadObjects(currentPrefix);
+
+            } catch (error) {
+                setResult(
+                    "업로드 실패",
+                    error.message
+                );
+            }
+        }
+
+        // ============================================================
+        // Event
+        // ============================================================
+        document.getElementById("bucket").addEventListener(
+            "change",
+            function () {
+                currentPrefix = "";
+
+                document.getElementById("fileName").value = "";
+
+                loadObjects("");
+            }
+        );
+
+        document.getElementById("directory").addEventListener(
+            "input",
+            updateCurrentObject
+        );
+
+        document.getElementById("fileName").addEventListener(
+            "input",
+            updateCurrentObject
+        );
+    </script>
+
+</body>
+
+</html>

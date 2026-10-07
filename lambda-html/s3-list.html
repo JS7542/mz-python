@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -37,7 +38,8 @@
       color: var(--text);
     }
 
-    button, input {
+    button,
+    input {
       font: inherit;
     }
 
@@ -94,10 +96,10 @@
     .region-chip {
       white-space: nowrap;
       padding: 9px 13px;
-      border: 1px solid rgba(255,255,255,.15);
+      border: 1px solid rgba(255, 255, 255, .15);
       border-radius: 999px;
       color: #e5e7eb;
-      background: rgba(255,255,255,.07);
+      background: rgba(255, 255, 255, .07);
       font-size: 13px;
     }
 
@@ -346,7 +348,9 @@
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .footer-note {
@@ -372,7 +376,7 @@
       border-left: 5px solid var(--green);
       border-radius: 14px;
       padding: 14px 16px;
-      box-shadow: 0 18px 45px rgba(0,0,0,.14);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, .14);
       animation: slideIn .22s ease;
       line-height: 1.45;
       font-size: 14px;
@@ -393,8 +397,15 @@
     }
 
     @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .modal-backdrop {
@@ -416,7 +427,7 @@
       width: min(500px, 100%);
       background: white;
       border-radius: 20px;
-      box-shadow: 0 24px 80px rgba(0,0,0,.25);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .25);
       overflow: hidden;
     }
 
@@ -499,6 +510,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="toast-wrap" id="toastWrap"></div>
 
@@ -542,13 +554,8 @@
 
         <div class="create-body">
           <label for="bucketName">Bucket Name</label>
-          <input
-            id="bucketName"
-            class="input"
-            type="text"
-            placeholder="예: std20-lambda-create-bucket-0001"
-            autocomplete="off"
-          />
+          <input id="bucketName" class="input" type="text" placeholder="예: std20-lambda-create-bucket-0001"
+            autocomplete="off" />
           <p class="help">
             소문자 영문, 숫자, 마침표(.), 하이픈(-)을 사용할 수 있습니다.
             빈 값으로 생성하면 Lambda가 랜덤 이름을 만듭니다.
@@ -573,13 +580,8 @@
         </div>
 
         <div class="toolbar">
-          <input
-            id="searchInput"
-            class="input search"
-            type="search"
-            placeholder="버킷 이름 또는 리전 검색"
-            oninput="renderBuckets()"
-          />
+          <input id="searchInput" class="input search" type="search" placeholder="버킷 이름 또는 리전 검색"
+            oninput="renderBuckets()" />
           <button class="btn btn-secondary" onclick="loadBuckets()">새로고침</button>
         </div>
 
@@ -604,14 +606,8 @@
         <div class="danger-name" id="deleteTargetName"></div>
 
         <label for="deleteConfirmInput">버킷 이름 확인</label>
-        <input
-          id="deleteConfirmInput"
-          class="input"
-          type="text"
-          placeholder="위 버킷 이름을 입력하세요"
-          autocomplete="off"
-          oninput="validateDeleteConfirmation()"
-        />
+        <input id="deleteConfirmInput" class="input" type="text" placeholder="위 버킷 이름을 입력하세요" autocomplete="off"
+          oninput="validateDeleteConfirmation()" />
       </div>
 
       <div class="modal-actions">
@@ -771,8 +767,8 @@
         contentArea.innerHTML = `
           <div class="empty">
             ${buckets.length === 0
-              ? "조회된 S3 버킷이 없습니다."
-              : "검색 조건에 맞는 버킷이 없습니다."}
+            ? "조회된 S3 버킷이 없습니다."
+            : "검색 조건에 맞는 버킷이 없습니다."}
           </div>
         `;
         return;
@@ -985,4 +981,5 @@
     loadBuckets();
   </script>
 </body>
+
 </html>
